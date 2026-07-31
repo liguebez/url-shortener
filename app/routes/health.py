@@ -9,13 +9,13 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cache import get_redis
-from app.db import get_session
+from app.db import SessionDep
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["health"])
 
-SessionDep = Annotated[AsyncSession, Depends(get_session)]
+
 RedisDep = Annotated[Redis, Depends(get_redis)]
 
 CHECK_TIMEOUT_SECONDS = 2.0

@@ -2,12 +2,15 @@ import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 
 from app.cache import create_redis
 from app.config import get_settings
 from app.db import make_engine, make_sessionmaker
-from app.routes import health
+from app.routes import health, urls
 
 
 @asynccontextmanager
@@ -32,3 +35,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 app = FastAPI(title="URL Shortener", version="0.1.0", lifespan=lifespan)
 
 app.include_router(health.router)
+app.include_router(urls.router)
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"detail": jsonable_encoder(exc.errors())},
+    )

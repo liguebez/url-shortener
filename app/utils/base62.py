@@ -18,6 +18,7 @@ def encode(n: int) -> str:
 
     return "".join(reversed(lst))
 
+
 def decode(s: str) -> int:
     if not s:
         raise ValueError("string cannot be empty")
