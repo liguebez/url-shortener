@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -42,3 +42,15 @@ async def create_short_url(
 
     await session.commit()
     return new_url
+
+
+def is_gone(url: Url, *, now: datetime | None = None) -> bool:
+    now = now or datetime.now(UTC)
+    return url.deleted_at is not None or (
+        url.expires_at is not None and url.expires_at <= now
+    )
+
+
+async def get_url(session: AsyncSession, short_id: str) -> Url | None:
+
+    return await session.get(Url, short_id)

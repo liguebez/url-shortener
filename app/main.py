@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 from app.cache import create_redis
 from app.config import get_settings
 from app.db import make_engine, make_sessionmaker
-from app.routes import health, urls
+from app.routes import health, redirect, urls
 
 
 @asynccontextmanager
@@ -36,6 +36,7 @@ app = FastAPI(title="URL Shortener", version="0.1.0", lifespan=lifespan)
 
 app.include_router(health.router)
 app.include_router(urls.router)
+app.include_router(redirect.router)
 
 
 @app.exception_handler(RequestValidationError)

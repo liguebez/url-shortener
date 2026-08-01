@@ -3,7 +3,14 @@ import secrets
 
 import pytest
 
-from app.utils.base62 import ALPHABET, BASE, decode, encode, random_key
+from app.utils.base62 import (
+    ALPHABET,
+    BASE,
+    decode,
+    encode,
+    is_valid_key,
+    random_key,
+)
 
 ANCHORS = [
     (0, "0"),
@@ -102,3 +109,52 @@ def test_random_key_is_unaffected_by_seeding_stdlib_random():
     random.seed(0)
     second = random_key()
     assert first != second
+
+
+@pytest.mark.parametrize("text", ["0000000", "zzzzzzz", "aB3xY7z", "0123456"])
+def test_is_valid_key_accepts_well_formed_keys(text):
+    assert is_valid_key(text, 7) is True
+
+
+def test_is_valid_key_accepts_every_alphabet_character():
+    assert all(is_valid_key(char, 1) for char in ALPHABET)
+
+
+@pytest.mark.parametrize("length", [1, 7, 10, 22])
+def test_is_valid_key_accepts_random_key_output(length):
+    assert is_valid_key(random_key(length), length)
+
+
+@pytest.mark.parametrize("text", ["", "abc", "abcdef", "abcdefgh", "a" * 64])
+def test_is_valid_key_rejects_wrong_length(text):
+    assert is_valid_key(text, 7) is False
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["abcdef!", "abcde-f", "abcde_f", "abcd/ef", "abcde f", "abcdef\t", "abcdeéf"],
+)
+def test_is_valid_key_rejects_non_base62_characters(text):
+    assert is_valid_key(text, 7) is False
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "\u0661\u0662\u0663\u0664\u0665\u0666\u0667",
+        "\uff11\uff12\uff13\uff14\uff15\uff16\uff17",
+    ],
+)
+def test_is_valid_key_rejects_non_ascii_digits(text):
+    assert is_valid_key(text, 7) is False
+
+
+def test_is_valid_key_rejects_favicon_and_common_probe_paths():
+    for text in ["favicon.ico", "robots.txt", "index.php", "wp-admin", ".env"]:
+        assert is_valid_key(text, 7) is False
+
+
+def test_is_valid_key_length_is_exact_not_minimum():
+    assert is_valid_key("aaaaaaa", 7) is True
+    assert is_valid_key("aaaaaaa", 6) is False
+    assert is_valid_key("aaaaaaa", 8) is False

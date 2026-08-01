@@ -35,3 +35,7 @@ def decode(s: str) -> int:
 def random_key(length: int = 7) -> str:
 
     return "".join(secrets.choice(ALPHABET) for _ in range(length))
+
+
+def is_valid_key(s: str, length: int) -> bool:
+    return len(s) == length and all(ch in _INDEX for ch in s)
