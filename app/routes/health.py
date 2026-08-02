@@ -1,22 +1,19 @@
 import asyncio
 import logging
-from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 from redis.asyncio import Redis
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.cache import get_redis
+from app.cache import RedisDep
 from app.db import SessionDep
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["health"])
 
-
-RedisDep = Annotated[Redis, Depends(get_redis)]
 
 CHECK_TIMEOUT_SECONDS = 2.0
 

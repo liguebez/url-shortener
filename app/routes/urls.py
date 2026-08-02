@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, status
 
+from app.cache import RedisDep
 from app.config import SettingsDep
 from app.db import SessionDep
 from app.schemas import ShortenRequest, ShortenResponse, UrlMetadata
@@ -10,11 +11,12 @@ router = APIRouter(prefix="/api/urls", tags=["urls"])
 
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def shorten(
-    payload: ShortenRequest, session: SessionDep, settings: SettingsDep
+    payload: ShortenRequest, session: SessionDep, redis: RedisDep, settings: SettingsDep
 ) -> ShortenResponse:
     try:
         url = await create_short_url(
             session,
+            redis,
             payload.long_url,
             settings=settings,
             expires_at=payload.expires_at,
