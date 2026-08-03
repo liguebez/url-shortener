@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Lint, test, migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: shortener
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: shortener_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      BASE_URL: http://localhost:8000
+      DATABASE_URL: postgresql+asyncpg://shortener:postgres@localhost:5432/shortener
+      TEST_DATABASE_URL: postgresql+asyncpg://shortener:postgres@localhost:5432/shortener_test
+      REDIS_URL: redis://localhost:6379/0
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Check formatting
+        run: ruff format --check .
+
+      - name: Run tests
+        run: pytest
+
+      - name: Create migration database
+        run: psql "$ADMIN_URL" -c "CREATE DATABASE shortener;"
+        env:
+          ADMIN_URL: postgresql://shortener:postgres@localhost:5432/postgres
+
+      - name: Apply migrations
+        run: alembic upgrade head
+
+      - name: Check for model and migration drift
+        run: alembic check
+
+  build:
+    name: Docker image
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t url-shortener:ci .
+
+      - name: Verify the image runs as a non-root user
+        run: |
+          user=$(docker run --rm --entrypoint whoami url-shortener:ci)
+          test "$user" = "appuser" || { echo "expected appuser, got $user"; exit 1; }
+
+      - name: Verify the entrypoint is executable
+        run: docker run --rm --entrypoint test url-shortener:ci -x /app/docker/entrypoint.sh
